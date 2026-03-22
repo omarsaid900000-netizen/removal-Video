@@ -3,259 +3,325 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Studio Pro v3.0 - استوديو العزل السينمائي</title>
+    <title>AI Studio Pro v6.1 - النسخة المصلحة</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;800&display=swap');
-        :root { --accent: #3b82f6; }
-        body { font-family: 'Cairo', sans-serif; background-color: #020617; color: #f1f5f9; overflow: hidden; }
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap');
+        body { font-family: 'Cairo', sans-serif; background-color: #020617; color: #f1f5f9; height: 100vh; margin: 0; overflow: hidden; display: flex; flex-direction: column; }
         
-        .sidebar { background: #0f172a; border-left: 1px solid #1e293b; }
-        .bg-card { cursor: pointer; border-radius: 12px; overflow: hidden; border: 2px solid transparent; transition: all 0.2s; aspect-ratio: 16/9; background: #1e293b; }
-        .bg-card:hover { transform: scale(1.02); border-color: var(--accent); }
-        .bg-card.active { border-color: var(--accent); box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+        .app-wrapper { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 64px); }
+        .sidebar { width: 360px; background: #0f172a; border-left: 1px solid #1e293b; display: flex; flex-direction: column; flex-shrink: 0; z-index: 50; overflow-y: auto; }
+        .main-stage { flex: 1; background: #000; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 20px; }
         
-        #outputCanvas { width: 100%; height: auto; max-height: 85vh; border-radius: 16px; background-color: #000; object-fit: contain; }
-        #videoSource { display: none; }
+        .canvas-container { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        #outputCanvas { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 12px; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
         
-        input[type="range"] { accent-color: var(--accent); height: 6px; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .bg-card { cursor: pointer; border-radius: 10px; overflow: hidden; border: 2px solid transparent; transition: 0.2s; aspect-ratio: 16/9; background: #1e293b; position: relative; min-height: 80px; }
+        .bg-card:hover { border-color: #3b82f6; }
+        .bg-card.active { border-color: #3b82f6; ring: 4px rgba(59, 130, 246, 0.3); }
+        .ai-panel { background: #111827; border: 1px solid #374151; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+        input[type="range"] { accent-color: #3b82f6; width: 100%; }
         
-        .checkerboard {
-            background-image: linear-gradient(45deg, #1e293b 25%, transparent 25%), linear-gradient(-45deg, #1e293b 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #1e293b 75%), linear-gradient(-45deg, transparent 75%, #1e293b 75%);
-            background-size: 20px 20px;
+        .loading-spin { border: 2px solid rgba(255,255,255,0.1); border-top: 2px solid #3b82f6; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @media (max-width: 1024px) {
+            .app-wrapper { flex-direction: column-reverse; height: auto; }
+            .sidebar { width: 100%; height: 50vh; }
+            .main-stage { height: 50vh; }
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body>
 
-    <!-- Navbar -->
-    <nav class="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl flex items-center justify-between px-6 z-50">
+    <!-- Header -->
+    <header class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 shrink-0">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+            <div class="p-2 bg-blue-600 rounded-xl">
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 00-2 2z" /></svg>
             </div>
-            <span class="text-xl font-extrabold tracking-tighter">AI STUDIO <span class="text-blue-500 underline decoration-2 underline-offset-4">PRO</span></span>
+            <h1 class="text-xl font-black text-blue-400">AI STUDIO <span class="text-white">PRO</span></h1>
         </div>
-        <button onclick="location.reload()" class="text-xs font-bold bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition">مشروع جديد</button>
-    </nav>
+        <button onclick="location.reload()" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition">مشروع جديد</button>
+    </header>
 
-    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        
-        <!-- Sidebar -->
-        <aside class="w-full lg:w-96 sidebar flex flex-col order-2 lg:order-1 border-t lg:border-t-0">
-            <div class="p-4 flex gap-2 border-b border-slate-800 bg-slate-900/30">
-                <button onclick="filterBgs('office')" class="flex-1 py-2 text-[11px] font-bold bg-slate-800 rounded-lg hover:bg-slate-700">مكاتب</button>
-                <button onclick="filterBgs('home')" class="flex-1 py-2 text-[11px] font-bold bg-slate-800 rounded-lg hover:bg-slate-700">منازل</button>
-                <button onclick="filterBgs('studio')" class="flex-1 py-2 text-[11px] font-bold bg-slate-800 rounded-lg hover:bg-slate-700">استوديوهات</button>
+    <div class="app-wrapper">
+        <aside class="sidebar no-scrollbar">
+            <div class="flex p-4 gap-2 sticky top-0 bg-[#0f172a] z-10">
+                <button onclick="switchTab('lib')" id="tabLib" class="flex-1 py-2 text-[11px] font-bold bg-blue-600 rounded-lg">المكتبة</button>
+                <button onclick="switchTab('ai')" id="tabAI" class="flex-1 py-2 text-[11px] font-bold bg-slate-800 rounded-lg">ذكاء Gemini ✨</button>
             </div>
 
-            <div id="bgGrid" class="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3 no-scrollbar content-start">
-                <!-- الـ 30 خلفية -->
-            </div>
-
-            <div class="p-6 bg-slate-900 border-t border-slate-800 space-y-6">
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center text-xs font-bold text-slate-400">
-                        <label>تنعيم الحواف (Smooth)</label>
-                        <span id="fLabel" class="text-blue-400">5.0px</span>
-                    </div>
-                    <input type="range" id="fRange" min="0" max="20" step="0.5" value="5" class="w-full">
+            <div id="sectionLib" class="flex-1 flex flex-col">
+                <div class="px-4 pb-4 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
+                    <button onclick="renderGrid('colors')" class="px-3 py-1 bg-slate-800 rounded-full text-[10px]">ألوان</button>
+                    <button onclick="renderGrid('office')" class="px-3 py-1 bg-slate-800 rounded-full text-[10px]">مكاتب</button>
+                    <button onclick="renderGrid('studio')" class="px-3 py-1 bg-slate-800 rounded-full text-[10px]">استوديو</button>
+                    <button onclick="renderGrid('home')" class="px-3 py-1 bg-slate-800 rounded-full text-[10px]">منازل</button>
                 </div>
+                <div id="bgGrid" class="grid grid-cols-2 gap-3 p-4 content-start"></div>
+            </div>
 
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center text-xs font-bold text-slate-400">
-                        <label>عزل الخلفية (Blur)</label>
-                        <span id="bLabel" class="text-blue-400">0px</span>
+            <div id="sectionAI" class="hidden p-4 space-y-4">
+                <div class="ai-panel">
+                    <h3 class="text-xs font-bold text-blue-400 mb-2">توليد نص للفيديو ✨</h3>
+                    <textarea id="aiScriptInput" placeholder="عن ماذا يتحدث فيديو اليوم؟" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs mb-3 outline-none focus:border-blue-500 min-h-[80px]"></textarea>
+                    <button onclick="aiGenerateScript()" id="btnScript" class="w-full bg-blue-600 py-2 rounded-lg text-xs font-bold">توليد الآن</button>
+                    <div id="aiScriptOut" class="mt-3 text-[11px] text-slate-300 p-2 bg-black/40 rounded hidden max-h-40 overflow-y-auto"></div>
+                </div>
+                <div class="ai-panel">
+                    <h3 class="text-xs font-bold text-blue-400 mb-2">تحليل المشهد ✨</h3>
+                    <button onclick="aiAnalyzeFrame()" id="btnAnalyze" class="w-full bg-emerald-600 py-2 rounded-lg text-xs font-bold">تحليل الإضاءة والمظهر</button>
+                    <div id="aiAnalyzeOut" class="mt-3 text-[11px] text-slate-300 p-2 bg-black/40 rounded hidden"></div>
+                </div>
+                <div class="ai-panel">
+                    <h3 class="text-xs font-bold text-blue-400 mb-2">توليد خلفية خيالية ✨</h3>
+                    <input type="text" id="aiImageInput" placeholder="صف خلفية أحلامك..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs mb-2 outline-none">
+                    <button onclick="aiGenerateImage()" id="btnImage" class="w-full bg-purple-600 py-2 rounded-lg text-xs font-bold">توليد الصورة</button>
+                    <div id="imgLoad" class="hidden mt-2 text-center"><div class="loading-spin"></div> <span class="text-[10px]">جاري التوليد...</span></div>
+                </div>
+            </div>
+
+            <div class="p-6 bg-slate-900 border-t border-slate-800 space-y-5 shrink-0">
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs font-bold">
+                        <span class="text-slate-400 italic">تنعيم الحواف</span>
+                        <span id="fVal" class="text-blue-400">5.0px</span>
                     </div>
-                    <input type="range" id="bRange" min="0" max="30" value="0" class="w-full">
+                    <input type="range" id="fRange" min="0" max="20" step="0.5" value="5">
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs font-bold">
+                        <span class="text-slate-400 italic">عزل الخلفية (Blur)</span>
+                        <span id="bVal" class="text-blue-400">0px</span>
+                    </div>
+                    <input type="range" id="bRange" min="0" max="40" value="0">
                 </div>
             </div>
         </aside>
 
-        <!-- Main Viewport -->
-        <main class="flex-1 bg-slate-950 p-4 lg:p-8 flex items-center justify-center relative order-1 lg:order-2">
-            
-            <div id="dropZone" class="max-w-2xl w-full aspect-video border-2 border-dashed border-slate-800 rounded-[2rem] flex flex-col items-center justify-center p-10 text-center hover:border-blue-500 hover:bg-blue-500/5 transition-all cursor-pointer" onclick="document.getElementById('fileInput').click()">
+        <main class="main-stage">
+            <div id="dropZone" class="w-full max-w-xl p-12 border-4 border-dashed border-slate-800 rounded-[3rem] text-center bg-slate-900/10 cursor-pointer hover:border-blue-500 transition-all" onclick="document.getElementById('fileInput').click()">
                 <input type="file" id="fileInput" accept="video/*" class="hidden">
-                <div class="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-4">
-                    <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                <div class="w-20 h-20 bg-blue-600/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                 </div>
-                <h2 class="text-xl font-bold mb-1">ارفع الفيديو للبدء</h2>
-                <p class="text-slate-500 text-sm">سيقوم الذكاء الاصطناعي بضبط الأبعاد آلياً</p>
+                <h2 class="text-2xl font-black mb-2">ارفع الفيديو</h2>
+                <p class="text-slate-500">سيعمل العزل والذكاء الاصطناعي فور الرفع</p>
             </div>
-
             <div id="loader" class="hidden flex flex-col items-center gap-4">
-                <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <span class="text-blue-500 text-sm font-bold">جاري تحميل المحرك...</span>
+                <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-blue-500 font-bold">جاري تفعيل الاستوديو...</p>
             </div>
-
-            <div id="workspace" class="hidden w-full h-full flex items-center justify-center">
-                <div class="relative w-full max-w-5xl shadow-2xl">
-                    <canvas id="outputCanvas"></canvas>
-                    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4 bg-slate-900/90 backdrop-blur p-2 rounded-2xl border border-slate-700">
-                        <button id="playBtn" class="p-3 bg-blue-600 rounded-xl hover:bg-blue-500">
-                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M4.516 7.548c0-.923.958-1.571 1.827-1.18l8.96 4.032a1.284 1.284 0 0 1 0 2.345l-8.96 4.032c-.869.391-1.827-.257-1.827-1.18V7.548z"/></svg>
-                        </button>
-                    </div>
-                </div>
+            <div class="canvas-container">
+                <canvas id="outputCanvas" class="hidden"></canvas>
             </div>
         </main>
     </div>
 
-    <video id="videoSource" playsinline loop muted></video>
-    <canvas id="maskCanvas" style="display:none"></canvas>
-    <img id="bgImg" style="display:none" crossorigin="anonymous">
+    <video id="vSource" playsinline loop muted style="display:none"></video>
+    <canvas id="mCanvas" style="display:none"></canvas>
+    <img id="bgActive" style="display:none" crossorigin="anonymous">
 
     <script>
-        const bgs = [
-            // مكاتب
-            {id:1, c:'office', u:'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000'},
-            {id:2, c:'office', u:'https://images.unsplash.com/photo-1497366811353-6870744d04b2?q=80&w=1000'},
-            {id:3, c:'office', u:'https://images.unsplash.com/photo-1504384308090-c89eececbfbc?q=80&w=1000'},
-            {id:4, c:'office', u:'https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=1000'},
-            {id:5, c:'office', u:'https://images.unsplash.com/photo-1431540015161-0bf868a2d407?q=80&w=1000'},
-            {id:6, c:'office', u:'https://images.unsplash.com/photo-1517502884422-41eaadeff171?q=80&w=1000'},
-            {id:7, c:'office', u:'https://images.unsplash.com/photo-1493932401135-21527bb4190e?q=80&w=1000'},
-            {id:8, c:'office', u:'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1000'},
-            {id:9, c:'office', u:'https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=1000'},
-            {id:10, c:'office', u:'https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=80&w=1000'},
-            // منازل
-            {id:11, c:'home', u:'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=1000'},
-            {id:12, c:'home', u:'https://images.unsplash.com/photo-1616489953149-8f2378377e6f?q=80&w=1000'},
-            {id:13, c:'home', u:'https://images.unsplash.com/photo-1615876234886-fd9a39faa97f?q=80&w=1000'},
-            {id:14, c:'home', u:'https://images.unsplash.com/photo-1583847268964-b28dc2f51ac9?q=80&w=1000'},
-            {id:15, c:'home', u:'https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?q=80&w=1000'},
-            {id:16, c:'home', u:'https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=1000'},
-            {id:17, c:'home', u:'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?q=80&w=1000'},
-            {id:18, c:'home', u:'https://images.unsplash.com/photo-1554995207-c18c203602cb?q=80&w=1000'},
-            {id:19, c:'home', u:'https://images.unsplash.com/photo-1505693419148-db19f487a083?q=80&w=1000'},
-            {id:20, c:'home', u:'https://images.unsplash.com/photo-1502005229762-cf1b2da7c5d6?q=80&w=1000'},
-            // استوديوهات
-            {id:21, c:'studio', u:'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=1000'},
-            {id:22, c:'studio', u:'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?q=80&w=1000'},
-            {id:23, c:'studio', u:'https://images.unsplash.com/photo-1524678606370-a47ad25cb82a?q=80&w=1000'},
-            {id:24, c:'studio', u:'https://images.unsplash.com/photo-1559854840-f121bf897f54?q=80&w=1000'},
-            {id:25, c:'studio', u:'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1000'},
-            {id:26, c:'studio', u:'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=1000'},
-            {id:27, c:'studio', u:'https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=1000'},
-            {id:28, c:'studio', u:'https://images.unsplash.com/photo-1496163359530-097d024103ff?q=80&w=1000'},
-            {id:29, c:'studio', u:'https://images.unsplash.com/photo-1503387762-592dea58ef21?q=80&w=1000'},
-            {id:30, c:'studio', u:'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=1000'}
-        ];
+        const apiKey = "";
+        const library = {
+            colors: [
+                {id:'c1', t:'color', v:'#ffffff', n:'أبيض'},
+                {id:'c2', t:'color', v:'#00ff00', n:'كروما'},
+                {id:'c3', t:'color', v:'#000000', n:'أسود'},
+                {id:'c4', t:'color', v:'#334155', n:'رمادي'}
+            ],
+            office: [
+                {id:'o1', t:'img', u:'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1000'},
+                {id:'o2', t:'img', u:'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1000'}
+            ],
+            home: [
+                {id:'h1', t:'img', u:'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=1000'},
+                {id:'h2', t:'img', u:'https://images.unsplash.com/photo-1616489953149-8f2378377e6f?w=1000'}
+            ],
+            studio: [
+                {id:'s1', t:'img', u:'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=1000'}
+            ]
+        };
 
-        const video = document.getElementById('videoSource');
-        const canvas = document.getElementById('outputCanvas');
-        const ctx = canvas.getContext('2d');
-        const maskCanvas = document.getElementById('maskCanvas');
-        const maskCtx = maskCanvas.getContext('2d');
-        const bgImg = document.getElementById('bgImg');
-        const bgGrid = document.getElementById('bgGrid');
+        const v = document.getElementById('vSource');
+        const c = document.getElementById('outputCanvas');
+        const ctx = c.getContext('2d');
+        const mc = document.getElementById('mCanvas');
+        const mctx = mc.getContext('2d');
+        const bgImg = document.getElementById('bgActive');
 
-        let selfieSegmentation;
-        let isProcessing = false;
+        let segmentation;
+        let isRunning = false;
+        let bgMode = 'color';
+        let bgVal = '#ffffff';
 
-        function initAI() {
-            selfieSegmentation = new SelfieSegmentation({
-                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
-            });
-            selfieSegmentation.setOptions({ modelSelection: 1 });
-            selfieSegmentation.onResults(onResults);
+        // --- Gemini AI ---
+        async function fetchGemini(payload) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+            return await res.json();
         }
 
+        async function aiGenerateScript() {
+            const pin = document.getElementById('aiScriptInput');
+            const out = document.getElementById('aiScriptOut');
+            const btn = document.getElementById('btnScript');
+            if(!pin.value) return;
+            btn.disabled = true; btn.innerHTML = '<div class="loading-spin"></div>';
+            try {
+                const res = await fetchGemini({ contents: [{ parts: [{ text: `اكتب سيناريو احترافي عن: ${pin.value}` }] }] });
+                out.innerText = res.candidates[0].content.parts[0].text;
+                out.classList.remove('hidden');
+            } catch(e) { console.error(e); }
+            finally { btn.disabled = false; btn.innerHTML = 'توليد الآن'; }
+        }
+
+        async function aiAnalyzeFrame() {
+            if(!isRunning) return;
+            const btn = document.getElementById('btnAnalyze');
+            const out = document.getElementById('aiAnalyzeOut');
+            btn.disabled = true; btn.innerHTML = '<div class="loading-spin"></div>';
+            try {
+                const frame = c.toDataURL('image/png').split(',')[1];
+                const res = await fetchGemini({ contents: [{ parts: [{ text: "حلل الإضاءة وأعطني نصائح بالعربي." }, { inlineData: { mimeType: "image/png", data: frame } }] }] });
+                out.innerText = res.candidates[0].content.parts[0].text;
+                out.classList.remove('hidden');
+            } catch(e) { console.error(e); }
+            finally { btn.disabled = false; btn.innerHTML = 'تحليل الإضاءة والمظهر'; }
+        }
+
+        async function aiGenerateImage() {
+            const pin = document.getElementById('aiImageInput');
+            const load = document.getElementById('imgLoad');
+            const btn = document.getElementById('btnImage');
+            if(!pin.value) return;
+            btn.disabled = true; load.classList.remove('hidden');
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
+                const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ instances: { prompt: pin.value }, parameters: { sampleCount: 1 } }) });
+                const json = await res.json();
+                bgMode = 'img';
+                bgImg.src = `data:image/png;base64,${json.predictions[0].bytesBase64Encoded}`;
+            } catch(e) { console.error(e); }
+            finally { btn.disabled = false; load.classList.add('hidden'); }
+        }
+
+        // --- محرك المعالجة المصلح ---
         function onResults(results) {
-            // تصحيح الأبعاد التلقائي
-            if (canvas.width !== results.image.width) {
-                canvas.width = results.image.width;
-                canvas.height = results.image.height;
-                maskCanvas.width = results.image.width;
-                maskCanvas.height = results.image.height;
+            if (!isRunning) return;
+
+            // تحديث المقاسات لتطابق الفيديو
+            if(c.width !== results.image.width) {
+                c.width = results.image.width;
+                c.height = results.image.height;
+                mc.width = results.image.width;
+                mc.height = results.image.height;
             }
 
             const feather = parseFloat(document.getElementById('fRange').value);
             const blur = parseInt(document.getElementById('bRange').value);
 
-            // 1. تنعيم القناع باحترافية
-            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-            maskCtx.save();
-            if (feather > 0) maskCtx.filter = `blur(${feather}px)`;
-            maskCtx.drawImage(results.segmentationMask, 0, 0, maskCanvas.width, maskCanvas.height);
-            maskCtx.restore();
+            // الخطوة 1: رسم القناع على الكانفاس المخفي وتنعيمه
+            mctx.clearRect(0, 0, mc.width, mc.height);
+            mctx.save();
+            if(feather > 0) mctx.filter = `blur(${feather}px)`;
+            mctx.drawImage(results.segmentationMask, 0, 0, mc.width, mc.height);
+            mctx.restore();
 
-            // 2. الرسم النهائي
+            // الخطوة 2: الرسم على الكانفاس الرئيسي
             ctx.save();
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, c.width, c.height);
 
-            // الخلفية مع ميزة التغبيش وتغطية كامل الشاشة
-            if (bgImg.complete && bgImg.src && bgImg.src !== window.location.href) {
+            // رسم الخلفية أولاً
+            if(bgMode === 'img' && bgImg.complete && bgImg.src) {
                 ctx.save();
-                if (blur > 0) ctx.filter = `blur(${blur}px)`;
-                const s = Math.max(canvas.width / bgImg.width, canvas.height / bgImg.height);
-                const w = bgImg.width * s, h = bgImg.height * s;
-                ctx.drawImage(bgImg, (canvas.width - w)/2, (canvas.height - h)/2, w, h);
+                if(blur > 0) ctx.filter = `blur(${blur}px)`;
+                const s = Math.max(c.width/bgImg.width, c.height/bgImg.height);
+                const w = bgImg.width*s, h = bgImg.height*s;
+                ctx.drawImage(bgImg, (c.width-w)/2, (c.height-h)/2, w, h);
                 ctx.restore();
+            } else {
+                ctx.fillStyle = bgVal;
+                ctx.fillRect(0, 0, c.width, c.height);
             }
 
-            // قص الشخص (Masking)
+            // رسم الشخص فوق الخلفية باستخدام القناع
+            // نستخدم القناع لتحديد أين يتم "مسح" الخلفية أو أين يتم وضع الشخص
             ctx.globalCompositeOperation = 'destination-out';
-            ctx.drawImage(maskCanvas, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(mc, 0, 0, c.width, c.height);
             
             ctx.globalCompositeOperation = 'destination-over';
-            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(results.image, 0, 0, c.width, c.height);
 
             ctx.restore();
         }
 
-        async function loop() {
-            if (video.paused || !isProcessing) return;
-            await selfieSegmentation.send({image: video});
-            requestAnimationFrame(loop);
+        async function process() {
+            if(v.paused || v.ended || !isRunning) return;
+            await segmentation.send({image: v});
+            requestAnimationFrame(process);
         }
 
-        function filterBgs(cat) {
-            bgGrid.innerHTML = '';
-            const filtered = cat === 'all' ? bgs : bgs.filter(b => b.c === cat);
-            filtered.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'bg-card';
-                div.innerHTML = `<img src="${item.u}" class="w-full h-full object-cover" crossorigin="anonymous">`;
-                div.onclick = () => {
-                    document.querySelectorAll('.bg-card').forEach(c => c.classList.remove('active'));
-                    div.classList.add('active');
-                    bgImg.src = item.u;
-                };
-                bgGrid.appendChild(div);
+        function switchTab(t) {
+            document.getElementById('sectionLib').classList.toggle('hidden', t === 'ai');
+            document.getElementById('sectionAI').classList.toggle('hidden', t === 'lib');
+            document.getElementById('tabLib').classList.toggle('bg-blue-600', t === 'lib');
+            document.getElementById('tabLib').classList.toggle('bg-slate-800', t === 'ai');
+            document.getElementById('tabAI').classList.toggle('bg-blue-600', t === 'ai');
+            document.getElementById('tabAI').classList.toggle('bg-slate-800', t === 'lib');
+        }
+
+        function renderGrid(cat) {
+            const g = document.getElementById('bgGrid'); g.innerHTML = '';
+            library[cat].forEach(i => {
+                const d = document.createElement('div'); d.className = 'bg-card';
+                if(i.t === 'color') {
+                    d.style.backgroundColor = i.v;
+                    d.innerHTML = `<div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-black/50">${i.n}</div>`;
+                    d.onclick = () => { bgMode='color'; bgVal=i.v; selectCard(d); };
+                } else {
+                    d.innerHTML = `<img src="${i.u}" class="w-full h-full object-cover">`;
+                    d.onclick = () => { bgMode='img'; bgImg.src=i.u; selectCard(d); };
+                }
+                g.appendChild(d);
             });
         }
 
-        document.getElementById('fileInput').onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        function selectCard(el) { document.querySelectorAll('.bg-card').forEach(c=>c.classList.remove('active')); el.classList.add('active'); }
 
+        document.getElementById('fileInput').onchange = (e) => {
+            const f = e.target.files[0]; if(!f) return;
             document.getElementById('dropZone').classList.add('hidden');
             document.getElementById('loader').classList.remove('hidden');
+            
+            const url = URL.createObjectURL(f);
+            v.src = url;
+            v.load(); // ضمان تحميل الفيديو
 
-            video.src = URL.createObjectURL(file);
-            video.onloadedmetadata = () => {
+            v.onloadedmetadata = () => {
                 document.getElementById('loader').classList.add('hidden');
-                document.getElementById('workspace').classList.remove('hidden');
-                initAI();
-                isProcessing = true;
-                video.play();
-                loop();
+                c.classList.remove('hidden');
+                
+                segmentation = new SelfieSegmentation({
+                    locateFile: (f)=>`https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`
+                });
+                segmentation.setOptions({modelSelection: 1});
+                segmentation.onResults(onResults);
+                
+                isRunning = true;
+                v.play().then(() => {
+                    process();
+                }).catch(err => console.error("Video play failed:", err));
             };
         };
 
-        document.getElementById('fRange').oninput = (e) => document.getElementById('fLabel').innerText = e.target.value + 'px';
-        document.getElementById('bRange').oninput = (e) => document.getElementById('bLabel').innerText = e.target.value + 'px';
-        document.getElementById('playBtn').onclick = () => {
-            if (video.paused) { video.play(); isProcessing = true; loop(); }
-            else { video.pause(); isProcessing = false; }
-        };
+        document.getElementById('fRange').oninput = (e) => document.getElementById('fVal').innerText = e.target.value + 'px';
+        document.getElementById('bRange').oninput = (e) => document.getElementById('bVal').innerText = e.target.value + 'px';
 
-        filterBgs('all');
-        bgImg.src = bgs[0].u;
+        renderGrid('colors');
     </script>
 </body>
 </html>
