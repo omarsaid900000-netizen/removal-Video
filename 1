@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مُزيل خلفية الفيديو الاحترافي - النسخة الذكية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MediaPipe Selfie Segmentation -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700&display=swap');
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            background: #000;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            image-rendering: auto;
+        }
+        #videoSource { display: none; }
+        input[type="range"] { accent-color: #3b82f6; }
+        
+        /* تأثير الخلفية الشفافة (Checkerboard) */
+        .checkerboard {
+            background-image: linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+                              linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+                              linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-10 flex flex-col items-center">
+
+    <!-- Header -->
+    <header class="text-center mb-10">
+        <h1 class="text-4xl md:text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300 mb-4">
+            إزالة الخلفية بذكاء
+        </h1>
+        <p class="text-slate-400 max-w-xl mx-auto">
+            تطبيق احترافي يستخدم تقنيات تنعيم الحواف (Feathering) للقضاء على الضوضاء حول الشعر والتفاصيل الدقيقة.
+        </p>
+    </header>
+
+    <main class="w-full max-w-5xl">
+        
+        <!-- Upload Section -->
+        <div id="uploadBox" class="glass-panel rounded-3xl p-12 text-center border-2 border-dashed border-slate-600 hover:border-blue-500 transition-all cursor-pointer">
+            <input type="file" id="fileInput" accept="video/*" class="hidden">
+            <div id="uploadUI">
+                <div class="bg-blue-600/20 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 00-2 2z" />
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold mb-2">اختر الفيديو المراد معالجته</h2>
+                <p class="text-slate-500">ادعم MP4, MOV, WebM (المعالجة تتم محلياً على جهازك)</p>
+            </div>
+            <div id="loadingUI" class="hidden">
+                <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                <p class="mt-6 text-blue-400 font-bold">جاري تشغيل محرك العزل الذكي...</p>
+            </div>
+        </div>
+
+        <!-- Editor Interface -->
+        <div id="editorUI" class="hidden grid grid-cols-1 lg:grid-cols-4 gap-8">
+            
+            <!-- Controls Sidebar -->
+            <div class="lg:col-span-1 space-y-6 glass-panel p-6 rounded-3xl border border-slate-700">
+                <div>
+                    <h3 class="font-bold text-sm text-blue-400 uppercase tracking-widest mb-4">أدوات التحكم في الـ Noise</h3>
+                    
+                    <div class="space-y-6">
+                        <!-- Feathering Slider -->
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-xs font-bold">
+                                <span>تنعيم الحواف (Feather)</span>
+                                <span id="featherVal" class="text-blue-400">4.0px</span>
+                            </div>
+                            <input type="range" id="featherRange" min="0" max="15" step="0.5" value="4" class="w-full">
+                            <p class="text-[10px] text-slate-500">ارفع هذه القيمة لإزالة المربعات (Noise) حول الرأس.</p>
+                        </div>
+
+                        <!-- Threshold Slider -->
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-xs font-bold">
+                                <span>قوة القناع (Contrast)</span>
+                                <span id="thresholdVal" class="text-blue-400">0.5</span>
+                            </div>
+                            <input type="range" id="thresholdRange" min="0.1" max="0.9" step="0.05" value="0.5" class="w-full">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-6 border-t border-slate-700/50">
+                    <h3 class="font-bold text-sm text-slate-300 mb-4">تغيير الخلفية</h3>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="changeBg('transparent')" class="aspect-square rounded-lg border border-white/10 checkerboard" title="شفاف"></button>
+                        <button onclick="changeBg('#00ff00')" class="aspect-square rounded-lg bg-green-500" title="كروما"></button>
+                        <button onclick="changeBg('#ffffff')" class="aspect-square rounded-lg bg-white shadow-inner" title="أبيض"></button>
+                        <input type="color" id="colorPicker" oninput="changeBg(this.value)" class="w-full aspect-square p-0 border-0 bg-transparent cursor-pointer rounded-lg overflow-hidden">
+                    </div>
+                </div>
+
+                <div class="pt-6 space-y-3">
+                    <button id="toggleBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20">تشغيل / إيقاف</button>
+                    <button onclick="location.reload()" class="w-full py-2 text-slate-500 hover:text-white transition text-sm">تغيير الفيديو</button>
+                </div>
+            </div>
+
+            <!-- Canvas Display -->
+            <div class="lg:col-span-3 space-y-4">
+                <div id="canvasWrapper" class="canvas-container checkerboard">
+                    <canvas id="outputCanvas"></canvas>
+                </div>
+                <div class="flex items-center gap-3 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <p class="text-sm text-slate-400">معالجة فورية باستخدام <strong>MediaPipe AI</strong> ونظام التنعيم النشط.</p>
+                </div>
+            </div>
+        </div>
+
+        <video id="videoSource" playsinline loop muted></video>
+        <!-- Canvas خفي لعمل الفلترة قبل العرض -->
+        <canvas id="maskCanvas" style="display:none;"></canvas>
+    </main>
+
+    <script>
+        const video = document.getElementById('videoSource');
+        const outputCanvas = document.getElementById('outputCanvas');
+        const outCtx = outputCanvas.getContext('2d');
+        const maskCanvas = document.getElementById('maskCanvas');
+        const maskCtx = maskCanvas.getContext('2d');
+
+        const uploadBox = document.getElementById('uploadBox');
+        const fileInput = document.getElementById('fileInput');
+        const previewSection = document.getElementById('editorUI');
+        const toggleBtn = document.getElementById('toggleBtn');
+        
+        const featherRange = document.getElementById('featherRange');
+        const featherValText = document.getElementById('featherVal');
+        const thresholdRange = document.getElementById('thresholdRange');
+        const thresholdValText = document.getElementById('thresholdVal');
+
+        let bgColor = 'transparent';
+        let selfieSegmentation;
+        let isProcessing = false;
+
+        function initAI() {
+            selfieSegmentation = new SelfieSegmentation({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
+            });
+
+            selfieSegmentation.setOptions({
+                modelSelection: 1, 
+                selfieMode: false
+            });
+
+            selfieSegmentation.onResults(onResults);
+        }
+
+        function onResults(results) {
+            if (outputCanvas.width !== results.image.width) {
+                outputCanvas.width = results.image.width;
+                outputCanvas.height = results.image.height;
+                maskCanvas.width = results.image.width;
+                maskCanvas.height = results.image.height;
+            }
+
+            const feather = parseFloat(featherRange.value);
+
+            // 1. تنعيم القناع في الـ Canvas الخفي (هذا يزيل الـ Noise)
+            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+            maskCtx.save();
+            if (feather > 0) {
+                maskCtx.filter = `blur(${feather}px)`;
+            }
+            maskCtx.drawImage(results.segmentationMask, 0, 0, maskCanvas.width, maskCanvas.height);
+            maskCtx.restore();
+
+            // 2. الرسم النهائي - الترتيب الصحيح للطبقات
+            outCtx.save();
+            outCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+            
+            // أولاً: رسم القناع المنعم لعملية القص
+            outCtx.drawImage(maskCanvas, 0, 0, outputCanvas.width, outputCanvas.height);
+            
+            // ثانياً: استبدال القناع بصورة الفيديو (قص الشخص)
+            outCtx.globalCompositeOperation = 'source-in';
+            outCtx.drawImage(results.image, 0, 0, outputCanvas.width, outputCanvas.height);
+            
+            // ثالثاً: رسم الخلفية الملونة "تحت" الشخص المقصوص
+            outCtx.globalCompositeOperation = 'destination-over';
+            if (bgColor !== 'transparent') {
+                outCtx.fillStyle = bgColor;
+                outCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+            }
+            
+            outCtx.restore();
+        }
+
+        async function loop() {
+            if (video.paused || video.ended || !isProcessing) return;
+            await selfieSegmentation.send({image: video});
+            requestAnimationFrame(loop);
+        }
+
+        featherRange.oninput = () => featherValText.innerText = featherRange.value + 'px';
+        thresholdRange.oninput = () => thresholdValText.innerText = thresholdRange.value;
+
+        uploadBox.onclick = () => fileInput.click();
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('uploadUI').classList.add('hidden');
+            document.getElementById('loadingUI').classList.remove('hidden');
+
+            video.src = URL.createObjectURL(file);
+            video.onloadeddata = () => {
+                uploadBox.classList.add('hidden');
+                previewSection.classList.remove('hidden');
+                initAI();
+                isProcessing = true;
+                video.play();
+                loop();
+            };
+        };
+
+        toggleBtn.onclick = () => {
+            if (video.paused) { video.play(); isProcessing = true; loop(); }
+            else { video.pause(); isProcessing = false; }
+        };
+
+        function changeBg(color) {
+            bgColor = color;
+            const wrapper = document.getElementById('canvasWrapper');
+            if (color === 'transparent') {
+                wrapper.classList.add('checkerboard');
+                wrapper.style.backgroundColor = 'transparent';
+            } else {
+                wrapper.classList.remove('checkerboard');
+                wrapper.style.backgroundColor = color;
+            }
+        }
+    </script>
+</body>
+</html>
