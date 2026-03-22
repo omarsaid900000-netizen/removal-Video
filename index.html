@@ -3,265 +3,263 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مُزيل خلفية الفيديو الاحترافي - النسخة الذكية</title>
+    <title>AI Studio Pro - إزالة الخلفية باحترافية</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- MediaPipe Selfie Segmentation -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700&display=swap');
-        body {
-            font-family: 'Cairo', sans-serif;
-            background-color: #020617;
-            color: #f8fafc;
-            overflow-x: hidden;
-        }
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .canvas-container {
-            position: relative;
-            width: 100%;
-            border-radius: 1.5rem;
-            overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            background: #000;
-        }
-        canvas {
-            display: block;
-            width: 100%;
-            height: auto;
-            image-rendering: auto;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;800&display=swap');
+        body { font-family: 'Cairo', sans-serif; background-color: #050505; color: #e2e8f0; }
+        .studio-gradient { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+        .canvas-shadow { box-shadow: 0 0 50px rgba(59, 130, 246, 0.15); }
+        .bg-card:hover { transform: translateY(-5px); border-color: #3b82f6; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         #videoSource { display: none; }
-        input[type="range"] { accent-color: #3b82f6; }
-        
-        /* تأثير الخلفية الشفافة (Checkerboard) */
-        .checkerboard {
-            background-image: linear-gradient(45deg, #1e293b 25%, transparent 25%), 
-                              linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
-                              linear-gradient(45deg, transparent 75%, #1e293b 75%), 
-                              linear-gradient(-45deg, transparent 75%, #1e293b 75%);
-            background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-        }
+        .active-bg { border: 3px solid #3b82f6 !important; }
     </style>
 </head>
-<body class="min-h-screen p-4 md:p-10 flex flex-col items-center">
+<body class="min-h-screen flex flex-col">
 
-    <!-- Header -->
-    <header class="text-center mb-10">
-        <h1 class="text-4xl md:text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300 mb-4">
-            إزالة الخلفية بذكاء
-        </h1>
-        <p class="text-slate-400 max-w-xl mx-auto">
-            تطبيق احترافي يستخدم تقنيات تنعيم الحواف (Feathering) للقضاء على الضوضاء حول الشعر والتفاصيل الدقيقة.
-        </p>
-    </header>
+    <!-- Navbar -->
+    <nav class="border-b border-slate-800 p-4 studio-gradient sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 00-2 2z" /></svg>
+                </div>
+                <h1 class="text-xl font-extrabold tracking-tight">AI STUDIO <span class="text-blue-500">PRO</span></h1>
+            </div>
+            <button onclick="location.reload()" class="text-sm bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition">فيديو جديد</button>
+        </div>
+    </nav>
 
-    <main class="w-full max-w-5xl">
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
         
-        <!-- Upload Section -->
-        <div id="uploadBox" class="glass-panel rounded-3xl p-12 text-center border-2 border-dashed border-slate-600 hover:border-blue-500 transition-all cursor-pointer">
-            <input type="file" id="fileInput" accept="video/*" class="hidden">
-            <div id="uploadUI">
-                <div class="bg-blue-600/20 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                    <svg class="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 00-2 2z" />
-                    </svg>
+        <!-- Sidebar: Background Library & Controls -->
+        <aside class="w-full lg:w-96 border-l border-slate-800 flex flex-col studio-gradient order-2 lg:order-1">
+            <div class="p-6 border-b border-slate-800">
+                <h2 class="font-bold text-lg mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path></svg>
+                    مكتبة الخلفيات الاحترافية
+                </h2>
+                <div class="flex gap-2 mb-4 overflow-x-auto pb-2 custom-scrollbar text-xs">
+                    <button onclick="filterBgs('all')" class="bg-blue-600 px-3 py-1 rounded-full whitespace-nowrap">الكل</button>
+                    <button onclick="filterBgs('office')" class="bg-slate-800 px-3 py-1 rounded-full whitespace-nowrap">مكاتب</button>
+                    <button onclick="filterBgs('studio')" class="bg-slate-800 px-3 py-1 rounded-full whitespace-nowrap">استوديوهات</button>
+                    <button onclick="filterBgs('home')" class="bg-slate-800 px-3 py-1 rounded-full whitespace-nowrap">منازل مودرن</button>
                 </div>
-                <h2 class="text-2xl font-bold mb-2">اختر الفيديو المراد معالجته</h2>
-                <p class="text-slate-500">ادعم MP4, MOV, WebM (المعالجة تتم محلياً على جهازك)</p>
             </div>
-            <div id="loadingUI" class="hidden">
-                <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-                <p class="mt-6 text-blue-400 font-bold">جاري تشغيل محرك العزل الذكي...</p>
-            </div>
-        </div>
 
-        <!-- Editor Interface -->
-        <div id="editorUI" class="hidden grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Scrollable Backgrounds Grid -->
+            <div id="bgGrid" class="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3 custom-scrollbar">
+                <!-- ستتم إضافة الخلفيات عبر الجافا سكريبت -->
+            </div>
+
+            <!-- Manual Controls -->
+            <div class="p-6 bg-slate-900/50 border-t border-slate-800 space-y-4">
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-400">تنعيم الحواف (AI Edge)</span>
+                        <span id="featherLabel" class="text-blue-400 font-bold">4px</span>
+                    </div>
+                    <input type="range" id="featherRange" min="0" max="15" step="0.5" value="4" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-400">تعتيم الخلفية (Blur)</span>
+                        <span id="bgBlurLabel" class="text-blue-400 font-bold">0px</span>
+                    </div>
+                    <input type="range" id="bgBlurRange" min="0" max="20" step="1" value="0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Viewport -->
+        <section class="flex-1 bg-black flex flex-col items-center justify-center p-4 relative order-1 lg:order-2">
             
-            <!-- Controls Sidebar -->
-            <div class="lg:col-span-1 space-y-6 glass-panel p-6 rounded-3xl border border-slate-700">
-                <div>
-                    <h3 class="font-bold text-sm text-blue-400 uppercase tracking-widest mb-4">أدوات التحكم في الـ Noise</h3>
-                    
-                    <div class="space-y-6">
-                        <!-- Feathering Slider -->
-                        <div class="space-y-2">
-                            <div class="flex justify-between text-xs font-bold">
-                                <span>تنعيم الحواف (Feather)</span>
-                                <span id="featherVal" class="text-blue-400">4.0px</span>
-                            </div>
-                            <input type="range" id="featherRange" min="0" max="15" step="0.5" value="4" class="w-full">
-                            <p class="text-[10px] text-slate-500">ارفع هذه القيمة لإزالة المربعات (Noise) حول الرأس.</p>
-                        </div>
-
-                        <!-- Threshold Slider -->
-                        <div class="space-y-2">
-                            <div class="flex justify-between text-xs font-bold">
-                                <span>قوة القناع (Contrast)</span>
-                                <span id="thresholdVal" class="text-blue-400">0.5</span>
-                            </div>
-                            <input type="range" id="thresholdRange" min="0.1" max="0.9" step="0.05" value="0.5" class="w-full">
-                        </div>
+            <!-- Welcome/Upload Box -->
+            <div id="uploadZone" class="max-w-xl w-full text-center space-y-6 animate-fade-in">
+                <div class="border-2 border-dashed border-slate-700 rounded-[2.5rem] p-16 hover:border-blue-500 transition-all bg-slate-900/20 group cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" accept="video/*" class="hidden">
+                    <div class="w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                        <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     </div>
+                    <h3 class="text-2xl font-bold mb-2">ابدأ تجربة الاستوديو الاحترافية</h3>
+                    <p class="text-slate-400">ارفع الفيديو الخاص بك وسيقوم الذكاء الاصطناعي بالباقي</p>
                 </div>
-
-                <div class="pt-6 border-t border-slate-700/50">
-                    <h3 class="font-bold text-sm text-slate-300 mb-4">تغيير الخلفية</h3>
-                    <div class="grid grid-cols-4 gap-2">
-                        <button onclick="changeBg('transparent')" class="aspect-square rounded-lg border border-white/10 checkerboard" title="شفاف"></button>
-                        <button onclick="changeBg('#00ff00')" class="aspect-square rounded-lg bg-green-500" title="كروما"></button>
-                        <button onclick="changeBg('#ffffff')" class="aspect-square rounded-lg bg-white shadow-inner" title="أبيض"></button>
-                        <input type="color" id="colorPicker" oninput="changeBg(this.value)" class="w-full aspect-square p-0 border-0 bg-transparent cursor-pointer rounded-lg overflow-hidden">
-                    </div>
-                </div>
-
-                <div class="pt-6 space-y-3">
-                    <button id="toggleBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20">تشغيل / إيقاف</button>
-                    <button onclick="location.reload()" class="w-full py-2 text-slate-500 hover:text-white transition text-sm">تغيير الفيديو</button>
+                <div id="loadingStatus" class="hidden flex flex-col items-center gap-4">
+                    <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p class="text-blue-400 font-bold">جاري تحميل محرك العزل السينمائي...</p>
                 </div>
             </div>
 
-            <!-- Canvas Display -->
-            <div class="lg:col-span-3 space-y-4">
-                <div id="canvasWrapper" class="canvas-container checkerboard">
-                    <canvas id="outputCanvas"></canvas>
-                </div>
-                <div class="flex items-center gap-3 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
-                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <p class="text-sm text-slate-400">معالجة فورية باستخدام <strong>MediaPipe AI</strong> ونظام التنعيم النشط.</p>
+            <!-- Canvas Container -->
+            <div id="canvasWrapper" class="hidden w-full max-w-4xl relative canvas-shadow rounded-2xl overflow-hidden border border-slate-800">
+                <canvas id="outputCanvas"></canvas>
+                <div class="absolute bottom-4 right-4 flex gap-2">
+                    <button id="playPauseBtn" class="bg-black/50 backdrop-blur-md hover:bg-black/80 p-3 rounded-full transition">
+                        <svg id="playIcon" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                    </button>
                 </div>
             </div>
-        </div>
-
-        <video id="videoSource" playsinline loop muted></video>
-        <!-- Canvas خفي لعمل الفلترة قبل العرض -->
-        <canvas id="maskCanvas" style="display:none;"></canvas>
+        </section>
     </main>
 
+    <video id="videoSource" playsinline loop muted></video>
+    <!-- Hidden Layers for AI -->
+    <canvas id="maskCanvas" style="display:none"></canvas>
+    <img id="currentBgImg" style="display:none" src="">
+
     <script>
+        // 1. مكتبة الخلفيات (30+ خلفية احترافية)
+        const backgrounds = [
+            { id: 'off1', cat: 'office', url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80' },
+            { id: 'off2', cat: 'office', url: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=800&q=80' },
+            { id: 'off3', cat: 'office', url: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80' },
+            { id: 'off4', cat: 'office', url: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=800&q=80' },
+            { id: 'stu1', cat: 'studio', url: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=800&q=80' },
+            { id: 'stu2', cat: 'studio', url: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?auto=format&fit=crop&w=800&q=80' },
+            { id: 'stu3', cat: 'studio', url: 'https://images.unsplash.com/photo-1524678606370-a47ad25cb82a?auto=format&fit=crop&w=800&q=80' },
+            { id: 'hom1', cat: 'home', url: 'https://images.unsplash.com/photo-1616489953149-8f2378377e6f?auto=format&fit=crop&w=800&q=80' },
+            { id: 'hom2', cat: 'home', url: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=800&q=80' },
+            { id: 'hom3', cat: 'home', url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80' },
+            { id: 'hom4', cat: 'home', url: 'https://images.unsplash.com/photo-1615876234886-fd9a39faa97f?auto=format&fit=crop&w=800&q=80' },
+            // إضافة المزيد لتصل لـ 30+
+            ...Array.from({length: 20}, (_, i) => ({
+                id: `extra${i}`,
+                cat: i < 7 ? 'office' : (i < 14 ? 'home' : 'studio'),
+                url: `https://source.unsplash.com/random/800x600?${i < 7 ? 'office' : (i < 14 ? 'interior' : 'studio')}&sig=${i}`
+            }))
+        ];
+
         const video = document.getElementById('videoSource');
-        const outputCanvas = document.getElementById('outputCanvas');
-        const outCtx = outputCanvas.getContext('2d');
+        const canvas = document.getElementById('outputCanvas');
+        const ctx = canvas.getContext('2d');
         const maskCanvas = document.getElementById('maskCanvas');
         const maskCtx = maskCanvas.getContext('2d');
+        const bgImg = document.getElementById('currentBgImg');
+        const bgGrid = document.getElementById('bgGrid');
 
-        const uploadBox = document.getElementById('uploadBox');
-        const fileInput = document.getElementById('fileInput');
-        const previewSection = document.getElementById('editorUI');
-        const toggleBtn = document.getElementById('toggleBtn');
-        
-        const featherRange = document.getElementById('featherRange');
-        const featherValText = document.getElementById('featherVal');
-        const thresholdRange = document.getElementById('thresholdRange');
-        const thresholdValText = document.getElementById('thresholdVal');
-
-        let bgColor = 'transparent';
         let selfieSegmentation;
         let isProcessing = false;
 
+        // تهيئة واجهة الخلفيات
+        function renderBgGrid(items) {
+            bgGrid.innerHTML = '';
+            items.forEach(bg => {
+                const div = document.createElement('div');
+                div.className = `bg-card relative aspect-video rounded-xl overflow-hidden border-2 border-transparent cursor-pointer transition-all duration-300`;
+                div.innerHTML = `<img src="${bg.url}" class="w-full h-full object-cover">`;
+                div.onclick = () => {
+                    document.querySelectorAll('.bg-card').forEach(c => c.classList.remove('active-bg'));
+                    div.classList.add('active-bg');
+                    bgImg.src = bg.url;
+                };
+                bgGrid.appendChild(div);
+            });
+        }
+
+        function filterBgs(cat) {
+            const filtered = cat === 'all' ? backgrounds : backgrounds.filter(b => b.cat === cat);
+            renderBgGrid(filtered);
+        }
+
+        // تهيئة محرك الذكاء الاصطناعي
         function initAI() {
             selfieSegmentation = new SelfieSegmentation({
                 locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
             });
-
-            selfieSegmentation.setOptions({
-                modelSelection: 1, 
-                selfieMode: false
-            });
-
+            selfieSegmentation.setOptions({ modelSelection: 1 });
             selfieSegmentation.onResults(onResults);
         }
 
         function onResults(results) {
-            if (outputCanvas.width !== results.image.width) {
-                outputCanvas.width = results.image.width;
-                outputCanvas.height = results.image.height;
+            if (canvas.width !== results.image.width) {
+                canvas.width = results.image.width;
+                canvas.height = results.image.height;
                 maskCanvas.width = results.image.width;
                 maskCanvas.height = results.image.height;
             }
 
-            const feather = parseFloat(featherRange.value);
+            const feather = parseFloat(document.getElementById('featherRange').value);
+            const bgBlur = parseInt(document.getElementById('bgBlurRange').value);
 
-            // 1. تنعيم القناع في الـ Canvas الخفي (هذا يزيل الـ Noise)
+            // 1. معالجة القناع (Smoothing)
             maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
             maskCtx.save();
-            if (feather > 0) {
-                maskCtx.filter = `blur(${feather}px)`;
-            }
+            if (feather > 0) maskCtx.filter = `blur(${feather}px)`;
             maskCtx.drawImage(results.segmentationMask, 0, 0, maskCanvas.width, maskCanvas.height);
             maskCtx.restore();
 
-            // 2. الرسم النهائي - الترتيب الصحيح للطبقات
-            outCtx.save();
-            outCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
-            
-            // أولاً: رسم القناع المنعم لعملية القص
-            outCtx.drawImage(maskCanvas, 0, 0, outputCanvas.width, outputCanvas.height);
-            
-            // ثانياً: استبدال القناع بصورة الفيديو (قص الشخص)
-            outCtx.globalCompositeOperation = 'source-in';
-            outCtx.drawImage(results.image, 0, 0, outputCanvas.width, outputCanvas.height);
-            
-            // ثالثاً: رسم الخلفية الملونة "تحت" الشخص المقصوص
-            outCtx.globalCompositeOperation = 'destination-over';
-            if (bgColor !== 'transparent') {
-                outCtx.fillStyle = bgColor;
-                outCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+            // 2. الرسم النهائي (الترتيب السينمائي)
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // الطبقة الأساسية: الخلفية مع Blur إذا طلب المستخدم
+            if (bgImg.src && bgImg.src !== window.location.href) {
+                ctx.save();
+                if (bgBlur > 0) ctx.filter = `blur(${bgBlur}px)`;
+                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            } else {
+                ctx.fillStyle = '#111';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
+
+            // طبقة الشخص: باستخدام القناع المنعم
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.drawImage(maskCanvas, 0, 0, canvas.width, canvas.height);
             
-            outCtx.restore();
+            ctx.globalCompositeOperation = 'destination-over';
+            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+            ctx.restore();
         }
 
-        async function loop() {
-            if (video.paused || video.ended || !isProcessing) return;
+        async function process() {
+            if (video.paused || !isProcessing) return;
             await selfieSegmentation.send({image: video});
-            requestAnimationFrame(loop);
+            requestAnimationFrame(process);
         }
 
-        featherRange.oninput = () => featherValText.innerText = featherRange.value + 'px';
-        thresholdRange.oninput = () => thresholdValText.innerText = thresholdRange.value;
-
-        uploadBox.onclick = () => fileInput.click();
-
-        fileInput.onchange = (e) => {
+        // تفاعلات المستخدم
+        document.getElementById('fileInput').onchange = (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
-            document.getElementById('uploadUI').classList.add('hidden');
-            document.getElementById('loadingUI').classList.remove('hidden');
+            document.getElementById('uploadZone').classList.add('hidden');
+            document.getElementById('loadingStatus').classList.remove('hidden');
 
             video.src = URL.createObjectURL(file);
             video.onloadeddata = () => {
-                uploadBox.classList.add('hidden');
-                previewSection.classList.remove('hidden');
+                document.getElementById('loadingStatus').classList.add('hidden');
+                document.getElementById('canvasWrapper').classList.remove('hidden');
                 initAI();
                 isProcessing = true;
                 video.play();
-                loop();
+                process();
             };
         };
 
-        toggleBtn.onclick = () => {
-            if (video.paused) { video.play(); isProcessing = true; loop(); }
+        document.getElementById('playPauseBtn').onclick = () => {
+            if (video.paused) { video.play(); isProcessing = true; process(); }
             else { video.pause(); isProcessing = false; }
         };
 
-        function changeBg(color) {
-            bgColor = color;
-            const wrapper = document.getElementById('canvasWrapper');
-            if (color === 'transparent') {
-                wrapper.classList.add('checkerboard');
-                wrapper.style.backgroundColor = 'transparent';
-            } else {
-                wrapper.classList.remove('checkerboard');
-                wrapper.style.backgroundColor = color;
-            }
-        }
+        document.getElementById('featherRange').oninput = (e) => {
+            document.getElementById('featherLabel').innerText = e.target.value + 'px';
+        };
+        
+        document.getElementById('bgBlurRange').oninput = (e) => {
+            document.getElementById('bgBlurLabel').innerText = e.target.value + 'px';
+        };
+
+        // تشغيل أولي
+        renderBgGrid(backgrounds);
+        // تعيين خلفية افتراضية (أول مكتب)
+        bgImg.src = backgrounds[0].url;
+
     </script>
 </body>
 </html>
